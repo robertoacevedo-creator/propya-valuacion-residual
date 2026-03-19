@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valuación Residual de Terrenos</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <img class="logo-img logo-img--white" src="propya-logo-white.png" alt="PROPYA">
+      <img class="logo-img logo-img--dark" src="propya-logo-transparent.png" alt="PROPYA">
+      <div class="logo-divider"></div>
+      <div class="logo-text">
+        <span class="logo-title">Valuación Residual</span>
+        <span class="logo-by">by PROPYA</span>
+      </div>
+    </div>
+    <button data-theme-toggle aria-label="Cambiar tema">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+  <section class="hero">
+    <h1>Calculadora de <span class="accent">Valuación</span><br>de Terrenos</h1>
+    <p class="subtitle">Método residual para determinar el valor de un terreno dentro de un proyecto inmobiliario</p>
+  </section>
+
+  <section class="calculator">
+    <form id="calcForm" class="form-grid" autocomplete="off">
+
+      <!-- Colonia search -->
+      <div class="input-group">
+        <label for="coloniaInput">Colonia</label>
+        <div class="search-wrapper">
+          <div class="input-wrapper">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="coloniaInput" placeholder="Buscar colonia..." autocomplete="off">
+          </div>
+          <ul class="dropdown" id="coloniaDropdown"></ul>
+        </div>
+        <div class="colonia-info hidden" id="coloniaInfo">
+          <span class="colonia-tag" id="coloniaTag"></span>
+          <button type="button" class="colonia-clear" id="coloniaClear" aria-label="Cambiar colonia">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Price with slider -->
+      <div class="input-group">
+        <label for="precioM2">Precio por m² de inmuebles nuevos</label>
+        <div class="input-wrapper">
+          <span class="input-prefix">$</span>
+          <input type="text" id="precioM2" inputmode="decimal" placeholder="45,000" required>
+          <span class="input-suffix">MXN/m²</span>
+        </div>
+        <div class="slider-section hidden" id="sliderSection">
+          <div class="slider-header">
+            <span class="slider-label">Ajuste sobre precio de referencia</span>
+            <span class="slider-value" id="sliderValue">0%</span>
+          </div>
+          <input type="range" id="ajusteSlider" class="slider" min="-10" max="0" step="1" value="0">
+          <div class="slider-range">
+            <span>-10%</span>
+            <span>0%</span>
+          </div>
+          <div class="slider-prices">
+            <span class="slider-ref" id="sliderRef"></span>
+            <span class="slider-adj" id="sliderAdj"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="superficie">Superficie del terreno</label>
+        <div class="input-wrapper">
+          <input type="text" id="superficie" inputmode="decimal" placeholder="500" required>
+          <span class="input-suffix">m²</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="niveles">Niveles permitidos de construcción</label>
+        <div class="input-wrapper">
+          <input type="text" id="niveles" inputmode="decimal" placeholder="5" required>
+          <span class="input-suffix">niveles</span>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="areaLibre">Porcentaje de área libre exigido</label>
+        <div class="input-wrapper">
+          <input type="text" id="areaLibre" inputmode="decimal" placeholder="30" required>
+          <span class="input-suffix">%</span>
+        </div>
+      </div>
+
+      <div class="input-group input-group--highlight">
+        <label for="precioOferta">Precio actual de oferta del terreno</label>
+        <div class="input-wrapper">
+          <span class="input-prefix">$</span>
+          <input type="text" id="precioOferta" inputmode="decimal" placeholder="12,000,000" required>
+          <span class="input-suffix">MXN</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-calculate" id="btnCalculate">
+        <span>Calcular Valuación</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <!-- Results -->
+  <section class="results hidden" id="results">
+    <div class="results-header">
+      <h2>Resultados del Análisis</h2>
+      <p class="results-subtitle" id="resultsSummary"></p>
+    </div>
+
+    <!-- Breakdown -->
+    <div class="breakdown" id="breakdown">
+      <div class="breakdown-item">
+        <span class="breakdown-label">Superficie del terreno</span>
+        <span class="breakdown-value" id="bSuperficie"></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-label">Área construible en planta baja</span>
+        <span class="breakdown-value" id="bAreaConstruible"></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-label">Niveles permitidos</span>
+        <span class="breakdown-value" id="bNiveles"></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-label">m² totales construibles</span>
+        <span class="breakdown-value" id="bM2Total"></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-label">Precio por m² en la colonia</span>
+        <span class="breakdown-value" id="bPrecioM2"></span>
+      </div>
+      <div class="breakdown-item breakdown-item--total">
+        <span class="breakdown-label">Valor total del proyecto</span>
+        <span class="breakdown-value" id="bValorTotal"></span>
+      </div>
+    </div>
+
+    <!-- Residual Cards -->
+    <div class="residual-grid" id="residualGrid"></div>
+
+    <!-- Comparison Bar -->
+    <div class="comparison-section" id="comparisonSection">
+      <h3>Comparación con precio de oferta</h3>
+      <div class="comparison-bar-container" id="comparisonBarContainer"></div>
+      <div class="comparison-legend">
+        <span class="legend-item"><span class="legend-dot legend-dot--green"></span> Valor residual superior a oferta (hay margen)</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--yellow"></span> Valor residual cercano a oferta (precaución)</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--red"></span> Valor residual inferior a oferta (riesgo)</span>
+      </div>
+    </div>
+
+    <button class="btn-reset" id="btnReset">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      <span>Nueva consulta</span>
+    </button>
+  </section>
+</main>
+
+<footer class="footer">
+  <img class="footer-logo" src="propya-logo-transparent.png" alt="PROPYA">
+  <img class="footer-logo footer-logo--white" src="propya-logo-white.png" alt="PROPYA">
+  <p>Herramienta de referencia. No sustituye un avalúo profesional.</p>
+  <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
