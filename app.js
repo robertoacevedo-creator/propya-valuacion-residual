@@ -87,7 +87,6 @@ function formatInputValue(input) {
   });
 }
 
-// Normalize string for searching (remove accents, lowercase)
 function normalize(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
@@ -112,6 +111,11 @@ const ajusteSlider = document.getElementById('ajusteSlider');
 const sliderValue = document.getElementById('sliderValue');
 const sliderRef = document.getElementById('sliderRef');
 const sliderAdj = document.getElementById('sliderAdj');
+
+const dynResidualSlider = document.getElementById('dynResidualSlider');
+const dynResidualValue = document.getElementById('dynResidualValue');
+const dynResult = document.getElementById('dynResult');
+const inverseGrid = document.getElementById('inverseGrid');
 
 // Setup formatted inputs
 formatInputValue(precioM2Input);
@@ -171,15 +175,11 @@ function selectColonia(c) {
   coloniaDropdown.classList.remove('open');
   dropdownOpen = false;
 
-  // Show tag
   coloniaTag.textContent = `${c.colonia} — ${c.alcaldia} · ${formatCurrency(c.precio)}/m²`;
   coloniaInfo.classList.remove('hidden');
   coloniaInput.parentElement.parentElement.querySelector('.input-wrapper').classList.add('hidden');
 
-  // Set price
   applyAdjustedPrice();
-
-  // Show slider
   sliderSection.classList.remove('hidden');
   ajusteSlider.value = 0;
   updateSliderDisplay();
@@ -221,23 +221,12 @@ function updateSliderDisplay() {
   }
 }
 
-// Events for colonia search
-coloniaInput.addEventListener('input', () => {
-  renderDropdown(coloniaInput.value);
-});
-
-coloniaInput.addEventListener('focus', () => {
-  renderDropdown(coloniaInput.value);
-});
-
+coloniaInput.addEventListener('input', () => renderDropdown(coloniaInput.value));
+coloniaInput.addEventListener('focus', () => renderDropdown(coloniaInput.value));
 coloniaInput.addEventListener('blur', () => {
-  setTimeout(() => {
-    coloniaDropdown.classList.remove('open');
-    dropdownOpen = false;
-  }, 150);
+  setTimeout(() => { coloniaDropdown.classList.remove('open'); dropdownOpen = false; }, 150);
 });
 
-// Keyboard navigation in dropdown
 coloniaInput.addEventListener('keydown', (e) => {
   const items = coloniaDropdown.querySelectorAll('.dropdown-item');
   const active = coloniaDropdown.querySelector('.dropdown-item--active');
@@ -248,34 +237,20 @@ coloniaInput.addEventListener('keydown', (e) => {
     if (!dropdownOpen) renderDropdown(coloniaInput.value);
     idx = Math.min(idx + 1, items.length - 1);
     items.forEach(i => i.classList.remove('dropdown-item--active'));
-    if (items[idx]) {
-      items[idx].classList.add('dropdown-item--active');
-      items[idx].scrollIntoView({ block: 'nearest' });
-    }
+    if (items[idx]) { items[idx].classList.add('dropdown-item--active'); items[idx].scrollIntoView({ block: 'nearest' }); }
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     idx = Math.max(idx - 1, 0);
     items.forEach(i => i.classList.remove('dropdown-item--active'));
-    if (items[idx]) {
-      items[idx].classList.add('dropdown-item--active');
-      items[idx].scrollIntoView({ block: 'nearest' });
-    }
+    if (items[idx]) { items[idx].classList.add('dropdown-item--active'); items[idx].scrollIntoView({ block: 'nearest' }); }
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (active) {
-      const colName = active.querySelector('.dropdown-colonia').textContent;
-      const match = COLONIAS.find(c => c.colonia === colName);
-      if (match) selectColonia(match);
-    }
-  } else if (e.key === 'Escape') {
-    coloniaDropdown.classList.remove('open');
-    dropdownOpen = false;
-  }
+    if (active) { const m = COLONIAS.find(c => c.colonia === active.querySelector('.dropdown-colonia').textContent); if (m) selectColonia(m); }
+  } else if (e.key === 'Escape') { coloniaDropdown.classList.remove('open'); dropdownOpen = false; }
 });
 
 coloniaClear.addEventListener('click', clearColonia);
 
-// Slider events
 ajusteSlider.addEventListener('input', () => {
   applyAdjustedPrice();
   updateSliderDisplay();
@@ -291,11 +266,15 @@ const RESIDUALS = [
   { pct: 22, label: 'Residual 22%' },
 ];
 
+// Store last calculation params for dynamic slider
+let lastCalcParams = null;
+
 function calculate(precioM2, superficie, niveles, areaLibrePct, precioOferta) {
   const areaLibreFrac = areaLibrePct / 100;
   const areaConstruiblePB = superficie * (1 - areaLibreFrac);
   const m2Construibles = areaConstruiblePB * niveles;
   const valorProyecto = m2Construibles * precioM2;
+  const precioM2Terreno = precioOferta / superficie;
 
   const residuals = RESIDUALS.map(r => {
     const valor = valorProyecto * (r.pct / 100);
@@ -304,7 +283,31 @@ function calculate(precioM2, superficie, niveles, areaLibrePct, precioOferta) {
     return { ...r, valor, diffAbsolute, diffPct };
   });
 
-  return { areaConstruiblePB, m2Construibles, valorProyecto, residuals };
+  return { areaConstruiblePB, m2Construibles, valorProyecto, precioM2Terreno, residuals };
+}
+
+function calculateInverse(precioM2, superficie, areaLibrePct, precioOferta) {
+  // niveles_min = precioOferta / (superficie * (1 - areaLibre/100) * precioM2 * residualPct/100)
+  const areaLibreFrac = areaLibrePct / 100;
+  const areaConstruiblePB = superficie * (1 - areaLibreFrac);
+
+  return RESIDUALS.map(r => {
+    const nivelesMin = precioOferta / (areaConstruiblePB * precioM2 * (r.pct / 100));
+    return { ...r, nivelesMin };
+  });
+}
+
+function calculateDynamic(pctResidual) {
+  if (!lastCalcParams) return null;
+  const { precioM2, superficie, niveles, areaLibrePct, precioOferta } = lastCalcParams;
+  const areaLibreFrac = areaLibrePct / 100;
+  const areaConstruiblePB = superficie * (1 - areaLibreFrac);
+  const m2Construibles = areaConstruiblePB * niveles;
+  const valorProyecto = m2Construibles * precioM2;
+  const valor = valorProyecto * (pctResidual / 100);
+  const diffAbsolute = valor - precioOferta;
+  const diffPct = ((valor - precioOferta) / precioOferta) * 100;
+  return { valor, diffAbsolute, diffPct, pctResidual };
 }
 
 function getSignalColor(diffPct) {
@@ -313,25 +316,33 @@ function getSignalColor(diffPct) {
   return 'red';
 }
 
+function getSignalLabel(diffPct) {
+  if (diffPct >= 10) return 'Viable';
+  if (diffPct >= -10) return 'Ajustado';
+  return 'Inviable';
+}
+
 
 // ====================== RENDER ======================
 
-function render(data, precioM2, superficie, niveles, precioOferta) {
+function render(data, precioM2, superficie, niveles, precioOferta, areaLibre) {
   document.getElementById('bSuperficie').textContent = formatNumber(superficie, 2) + ' m²';
   document.getElementById('bAreaConstruible').textContent = formatNumber(data.areaConstruiblePB, 2) + ' m²';
   document.getElementById('bNiveles').textContent = niveles;
   document.getElementById('bM2Total').textContent = formatNumber(data.m2Construibles, 2) + ' m²';
   document.getElementById('bPrecioM2').textContent = formatCurrency(precioM2) + '/m²';
+  document.getElementById('bPrecioM2Terreno').textContent = formatCurrency(data.precioM2Terreno) + '/m²';
   document.getElementById('bValorTotal').textContent = formatCurrency(data.valorProyecto);
 
   document.getElementById('resultsSummary').textContent =
     formatNumber(data.m2Construibles, 0) + ' m² construibles × ' +
     formatCurrency(precioM2) + '/m² = ' + formatCurrency(data.valorProyecto) + ' valor del proyecto';
 
-  // Residual cards
+  // Residual cards with Viable/Ajustado/Inviable labels
   residualGrid.innerHTML = '';
   data.residuals.forEach(r => {
     const color = getSignalColor(r.diffPct);
+    const statusLabel = getSignalLabel(r.diffPct);
     const arrow = r.diffAbsolute >= 0 ? '↑' : '↓';
     const diffLabel = r.diffAbsolute >= 0
       ? formatCurrency(r.diffAbsolute) + ' sobre la oferta'
@@ -340,7 +351,10 @@ function render(data, precioM2, superficie, niveles, precioOferta) {
     const card = document.createElement('div');
     card.className = `residual-card residual-card--${color}`;
     card.innerHTML = `
-      <span class="residual-pct">${r.label}</span>
+      <div class="residual-card-header">
+        <span class="residual-pct">${r.label}</span>
+        <span class="residual-status residual-status--${color}">${statusLabel}</span>
+      </div>
       <span class="residual-value">${formatCurrency(r.valor)}</span>
       <div class="residual-diff">
         <span class="residual-badge">${arrow} ${formatPct(r.diffPct)}</span>
@@ -349,6 +363,14 @@ function render(data, precioM2, superficie, niveles, precioOferta) {
     `;
     residualGrid.appendChild(card);
   });
+
+  // Dynamic residual slider - reset to 16%
+  dynResidualSlider.value = 16;
+  updateDynamicResidual();
+
+  // Inverse calculation
+  const inverseData = calculateInverse(precioM2, superficie, areaLibre, precioOferta);
+  renderInverse(inverseData, niveles);
 
   // Comparison bars
   comparisonBarContainer.innerHTML = '';
@@ -366,7 +388,72 @@ function render(data, precioM2, superficie, niveles, precioOferta) {
 
   resultsEl.classList.remove('hidden');
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Save to history
+  saveToHistory(precioM2, superficie, niveles, areaLibre, precioOferta, data);
 }
+
+function renderInverse(inverseData, actualNiveles) {
+  inverseGrid.innerHTML = '';
+  inverseData.forEach(r => {
+    const nMin = r.nivelesMin;
+    const nMinCeil = Math.ceil(nMin * 10) / 10; // round up to 1 decimal
+    const isFeasible = actualNiveles >= nMinCeil;
+    const color = isFeasible ? 'green' : (nMinCeil <= actualNiveles * 1.3 ? 'yellow' : 'red');
+    const statusLabel = isFeasible ? 'Viable' : (nMinCeil <= actualNiveles * 1.3 ? 'Ajustado' : 'Inviable');
+
+    const card = document.createElement('div');
+    card.className = `inverse-card inverse-card--${color}`;
+    card.innerHTML = `
+      <div class="inverse-card-header">
+        <span class="inverse-label">${r.label}</span>
+        <span class="residual-status residual-status--${color}">${statusLabel}</span>
+      </div>
+      <div class="inverse-value">
+        <span class="inverse-number">${nMin.toFixed(1)}</span>
+        <span class="inverse-unit">niveles mínimos</span>
+      </div>
+      <div class="inverse-compare">
+        ${isFeasible
+          ? `<span class="inverse-ok">✓ Permitidos: ${actualNiveles} niveles</span>`
+          : `<span class="inverse-warn">⚠ Permitidos: ${actualNiveles} — faltan ${(nMinCeil - actualNiveles).toFixed(1)}</span>`
+        }
+      </div>
+    `;
+    inverseGrid.appendChild(card);
+  });
+}
+
+function updateDynamicResidual() {
+  const pct = parseFloat(dynResidualSlider.value);
+  dynResidualValue.textContent = pct.toFixed(1) + '%';
+
+  const result = calculateDynamic(pct);
+  if (!result) return;
+
+  const color = getSignalColor(result.diffPct);
+  const statusLabel = getSignalLabel(result.diffPct);
+  const arrow = result.diffAbsolute >= 0 ? '↑' : '↓';
+  const diffLabel = result.diffAbsolute >= 0
+    ? formatCurrency(result.diffAbsolute) + ' sobre la oferta'
+    : formatCurrency(Math.abs(result.diffAbsolute)) + ' bajo la oferta';
+
+  dynResult.innerHTML = `
+    <div class="dyn-result-card dyn-result-card--${color}">
+      <div class="dyn-result-header">
+        <span class="dyn-result-title">Residual al ${pct.toFixed(1)}%</span>
+        <span class="residual-status residual-status--${color}">${statusLabel}</span>
+      </div>
+      <span class="dyn-result-value">${formatCurrency(result.valor)}</span>
+      <div class="dyn-result-diff">
+        <span class="residual-badge residual-badge--${color}">${arrow} ${formatPct(result.diffPct)}</span>
+        <span>${diffLabel}</span>
+      </div>
+    </div>
+  `;
+}
+
+dynResidualSlider.addEventListener('input', updateDynamicResidual);
 
 function createCompRow(label, value, offerValue, maxVal, color) {
   const row = document.createElement('div');
@@ -389,10 +476,11 @@ function createCompRow(label, value, offerValue, maxVal, color) {
 
   const diff = value - offerValue;
   const diffPctVal = ((diff) / offerValue) * 100;
+  const statusLabel = getSignalLabel(diffPctVal);
 
   row.innerHTML = `
     <div class="comp-row-header">
-      <span class="comp-row-label">${label}</span>
+      <span class="comp-row-label">${label} <span class="comp-row-status comp-row-status--${color}">${statusLabel}</span></span>
       <span class="comp-row-value">${formatCurrency(value)}</span>
     </div>
     <div class="comp-bar-track">
@@ -403,6 +491,96 @@ function createCompRow(label, value, offerValue, maxVal, color) {
   `;
   return row;
 }
+
+
+// ====================== HISTORY (localStorage) ======================
+
+const HISTORY_KEY = 'propya_calc_history';
+const MAX_HISTORY = 5;
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveToHistory(precioM2, superficie, niveles, areaLibre, precioOferta, data) {
+  const history = getHistory();
+  const colonia = selectedColonia ? selectedColonia.colonia : 'Manual';
+  const incidencia = formatCurrency(data.precioM2Terreno) + '/m²';
+
+  // Determine best/worst scenario
+  const scenarios = data.residuals.map(r => ({
+    label: r.pct + '%',
+    color: getSignalColor(r.diffPct),
+    statusLabel: getSignalLabel(r.diffPct)
+  }));
+
+  const entry = {
+    timestamp: new Date().toISOString(),
+    colonia,
+    superficie: formatNumber(superficie, 0) + ' m²',
+    niveles,
+    areaLibre: areaLibre + '%',
+    precioOferta: formatCurrency(precioOferta),
+    incidencia,
+    scenarios
+  };
+
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const historySection = document.getElementById('historySection');
+  const historyList = document.getElementById('historyList');
+
+  if (history.length === 0) {
+    historySection.classList.add('hidden');
+    return;
+  }
+
+  historySection.classList.remove('hidden');
+  historyList.innerHTML = '';
+
+  history.forEach((entry, i) => {
+    const date = new Date(entry.timestamp);
+    const timeStr = date.toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+
+    const scenarioDots = entry.scenarios.map(s =>
+      `<span class="hist-dot hist-dot--${s.color}" title="${s.label}: ${s.statusLabel}">${s.label}</span>`
+    ).join('');
+
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.innerHTML = `
+      <div class="hist-header">
+        <span class="hist-colonia">${entry.colonia}</span>
+        <span class="hist-time">${timeStr}</span>
+      </div>
+      <div class="hist-details">
+        <span>${entry.superficie} · ${entry.niveles} niveles · ${entry.areaLibre} libre</span>
+        <span>Oferta: ${entry.precioOferta}</span>
+      </div>
+      <div class="hist-row">
+        <span class="hist-incidencia">Incidencia: ${entry.incidencia}</span>
+        <div class="hist-scenarios">${scenarioDots}</div>
+      </div>
+    `;
+    historyList.appendChild(card);
+  });
+}
+
+document.getElementById('btnClearHistory').addEventListener('click', () => {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
+
+// Render history on load
+renderHistory();
 
 
 // ====================== EVENTS ======================
@@ -425,8 +603,11 @@ form.addEventListener('submit', function(e) {
     return;
   }
 
+  // Store params for dynamic slider
+  lastCalcParams = { precioM2, superficie, niveles, areaLibrePct: areaLibre, precioOferta };
+
   const data = calculate(precioM2, superficie, niveles, areaLibre, precioOferta);
-  render(data, precioM2, superficie, niveles, precioOferta);
+  render(data, precioM2, superficie, niveles, precioOferta, areaLibre);
 });
 
 btnReset.addEventListener('click', function() {
@@ -435,6 +616,7 @@ btnReset.addEventListener('click', function() {
   clearColonia();
   sliderSection.classList.add('hidden');
   precioM2Input.readOnly = false;
+  lastCalcParams = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 

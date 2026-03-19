@@ -162,6 +162,10 @@
         <span class="breakdown-label">Precio por m² en la colonia</span>
         <span class="breakdown-value" id="bPrecioM2"></span>
       </div>
+      <div class="breakdown-item">
+        <span class="breakdown-label">Incidencia: Precio/m² de terreno</span>
+        <span class="breakdown-value" id="bPrecioM2Terreno"></span>
+      </div>
       <div class="breakdown-item breakdown-item--total">
         <span class="breakdown-label">Valor total del proyecto</span>
         <span class="breakdown-value" id="bValorTotal"></span>
@@ -171,20 +175,55 @@
     <!-- Residual Cards -->
     <div class="residual-grid" id="residualGrid"></div>
 
+    <!-- Dynamic Residual Slider -->
+    <div class="dynamic-residual-section" id="dynamicResidualSection">
+      <h3>Explorador de Escenarios</h3>
+      <p class="dynamic-residual-desc">Ajusta el porcentaje residual para explorar márgenes de negociación</p>
+      <div class="slider-section">
+        <div class="slider-header">
+          <span class="slider-label">Porcentaje residual</span>
+          <span class="slider-value" id="dynResidualValue">16%</span>
+        </div>
+        <input type="range" id="dynResidualSlider" class="slider" min="16" max="25" step="0.5" value="16">
+        <div class="slider-range">
+          <span>16%</span>
+          <span>25%</span>
+        </div>
+      </div>
+      <div class="dynamic-result" id="dynResult"></div>
+    </div>
+
+    <!-- Inverse Calculation -->
+    <div class="inverse-section" id="inverseSection">
+      <h3>Cálculo Inverso: Niveles Mínimos para Viabilidad</h3>
+      <p class="inverse-desc">Niveles que necesitaría el predio para que cada escenario residual cubra el precio de oferta</p>
+      <div class="inverse-grid" id="inverseGrid"></div>
+    </div>
+
     <!-- Comparison Bar -->
     <div class="comparison-section" id="comparisonSection">
       <h3>Comparación con precio de oferta</h3>
       <div class="comparison-bar-container" id="comparisonBarContainer"></div>
       <div class="comparison-legend">
-        <span class="legend-item"><span class="legend-dot legend-dot--green"></span> Valor residual superior a oferta (hay margen)</span>
-        <span class="legend-item"><span class="legend-dot legend-dot--yellow"></span> Valor residual cercano a oferta (precaución)</span>
-        <span class="legend-item"><span class="legend-dot legend-dot--red"></span> Valor residual inferior a oferta (riesgo)</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--green"></span> Viable — hay margen</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--yellow"></span> Ajustado — precaución</span>
+        <span class="legend-item"><span class="legend-dot legend-dot--red"></span> Inviable — riesgo</span>
       </div>
     </div>
 
     <button class="btn-reset" id="btnReset">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
       <span>Nueva consulta</span>
+    </button>
+  </section>
+
+  <!-- History -->
+  <section class="history-section" id="historySection">
+    <h3>Historial de Consultas</h3>
+    <div class="history-list" id="historyList"></div>
+    <button class="btn-clear-history" id="btnClearHistory">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <span>Limpiar historial</span>
     </button>
   </section>
 </main>
