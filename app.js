@@ -96,7 +96,6 @@ function normalize(str) {
 
 const form = document.getElementById('calcForm');
 const resultsEl = document.getElementById('results');
-const residualGrid = document.getElementById('residualGrid');
 const comparisonBarContainer = document.getElementById('comparisonBarContainer');
 const btnReset = document.getElementById('btnReset');
 
@@ -105,7 +104,10 @@ const coloniaDropdown = document.getElementById('coloniaDropdown');
 const coloniaInfo = document.getElementById('coloniaInfo');
 const coloniaTag = document.getElementById('coloniaTag');
 const coloniaClear = document.getElementById('coloniaClear');
+const coloniaSearchWrapper = document.getElementById('coloniaSearchWrapper');
+const coloniaManualToggle = document.getElementById('coloniaManualToggle');
 const precioM2Input = document.getElementById('precioM2');
+const precioEditBtn = document.getElementById('precioEditBtn');
 const sliderSection = document.getElementById('sliderSection');
 const ajusteSlider = document.getElementById('ajusteSlider');
 const sliderValue = document.getElementById('sliderValue');
@@ -114,8 +116,15 @@ const sliderAdj = document.getElementById('sliderAdj');
 
 const dynResidualSlider = document.getElementById('dynResidualSlider');
 const dynResidualValue = document.getElementById('dynResidualValue');
-const dynResult = document.getElementById('dynResult');
 const inverseGrid = document.getElementById('inverseGrid');
+const explorerStatus = document.getElementById('explorerStatus');
+const explorerValue = document.getElementById('explorerValue');
+const explorerBadge = document.getElementById('explorerBadge');
+const explorerDiff = document.getElementById('explorerDiff');
+const explorerMarker = document.getElementById('explorerMarker');
+const explorerMarkerLabel = document.getElementById('explorerMarkerLabel');
+const explorerSliderWrap = document.getElementById('explorerSliderWrap');
+const explorerSection = document.getElementById('residualExplorer');
 
 // Setup formatted inputs
 formatInputValue(precioM2Input);
@@ -177,7 +186,12 @@ function selectColonia(c) {
 
   coloniaTag.textContent = `${c.colonia} — ${c.alcaldia} · ${formatCurrency(c.precio)}/m²`;
   coloniaInfo.classList.remove('hidden');
-  coloniaInput.parentElement.parentElement.querySelector('.input-wrapper').classList.add('hidden');
+  coloniaSearchWrapper.classList.add('hidden');
+  coloniaManualToggle.classList.add('hidden');
+
+  // Show edit button on price, enable adjustment slider
+  precioEditBtn.classList.remove('hidden');
+  precioM2Input.parentElement.classList.remove('input-wrapper--manual');
 
   applyAdjustedPrice();
   sliderSection.classList.remove('hidden');
@@ -188,12 +202,15 @@ function selectColonia(c) {
 function clearColonia() {
   selectedColonia = null;
   coloniaInfo.classList.add('hidden');
-  coloniaInput.parentElement.parentElement.querySelector('.input-wrapper').classList.remove('hidden');
+  coloniaSearchWrapper.classList.remove('hidden');
+  coloniaManualToggle.classList.remove('hidden');
   coloniaInput.value = '';
   coloniaInput.focus();
   sliderSection.classList.add('hidden');
   precioM2Input.value = '';
   precioM2Input.readOnly = false;
+  precioEditBtn.classList.add('hidden');
+  precioM2Input.parentElement.classList.remove('input-wrapper--manual');
 }
 
 function applyAdjustedPrice() {
@@ -250,6 +267,39 @@ coloniaInput.addEventListener('keydown', (e) => {
 });
 
 coloniaClear.addEventListener('click', clearColonia);
+
+// Manual price entry: skip colonia, go straight to price
+coloniaManualToggle.addEventListener('click', () => {
+  coloniaSearchWrapper.classList.add('hidden');
+  coloniaManualToggle.classList.add('hidden');
+  coloniaInfo.classList.add('hidden');
+  coloniaDropdown.classList.remove('open');
+  dropdownOpen = false;
+  selectedColonia = null;
+
+  // Enable manual price input
+  precioM2Input.readOnly = false;
+  precioM2Input.value = '';
+  precioM2Input.parentElement.classList.add('input-wrapper--manual');
+  precioM2Input.focus();
+  sliderSection.classList.add('hidden');
+  precioEditBtn.classList.add('hidden');
+
+  // Show a "back to colonia" link in the colonia-info area
+  coloniaTag.textContent = 'Precio manual — sin colonia';
+  coloniaInfo.classList.remove('hidden');
+});
+
+// Edit price override when a colonia is selected
+precioEditBtn.addEventListener('click', () => {
+  precioM2Input.readOnly = false;
+  precioM2Input.parentElement.classList.add('input-wrapper--manual');
+  precioM2Input.focus();
+  precioM2Input.select();
+  // Hide slider since user is overriding
+  sliderSection.classList.add('hidden');
+  precioEditBtn.classList.add('hidden');
+});
 
 ajusteSlider.addEventListener('input', () => {
   applyAdjustedPrice();
@@ -338,35 +388,16 @@ function render(data, precioM2, superficie, niveles, precioOferta, areaLibre) {
     formatNumber(data.m2Construibles, 0) + ' m² construibles × ' +
     formatCurrency(precioM2) + '/m² = ' + formatCurrency(data.valorProyecto) + ' valor del proyecto';
 
-  // Residual cards with Viable/Ajustado/Inviable labels
-  residualGrid.innerHTML = '';
-  data.residuals.forEach(r => {
-    const color = getSignalColor(r.diffPct);
-    const statusLabel = getSignalLabel(r.diffPct);
-    const arrow = r.diffAbsolute >= 0 ? '↑' : '↓';
-    const diffLabel = r.diffAbsolute >= 0
-      ? formatCurrency(r.diffAbsolute) + ' sobre la oferta'
-      : formatCurrency(Math.abs(r.diffAbsolute)) + ' bajo la oferta';
+  // Calculate the exact residual % that the offer price represents
+  const offerResidualPct = (precioOferta / data.valorProyecto) * 100;
+  // Clamp to slider range for marker, but store actual value
+  lastCalcParams.offerResidualPct = offerResidualPct;
 
-    const card = document.createElement('div');
-    card.className = `residual-card residual-card--${color}`;
-    card.innerHTML = `
-      <div class="residual-card-header">
-        <span class="residual-pct">${r.label}</span>
-        <span class="residual-status residual-status--${color}">${statusLabel}</span>
-      </div>
-      <span class="residual-value">${formatCurrency(r.valor)}</span>
-      <div class="residual-diff">
-        <span class="residual-badge">${arrow} ${formatPct(r.diffPct)}</span>
-      </div>
-      <span class="residual-diff" style="font-weight:400;">${diffLabel}</span>
-    `;
-    residualGrid.appendChild(card);
-  });
-
-  // Dynamic residual slider - reset to 16%
-  dynResidualSlider.value = 16;
+  // Set slider to offer's residual % (clamped to 10-45 range)
+  const clampedPct = Math.min(45, Math.max(10, Math.round(offerResidualPct * 2) / 2));
+  dynResidualSlider.value = clampedPct;
   updateDynamicResidual();
+  updateExplorerMarker();
 
   // Inverse calculation
   const inverseData = calculateInverse(precioM2, superficie, areaLibre, precioOferta);
@@ -438,19 +469,41 @@ function updateDynamicResidual() {
     ? formatCurrency(result.diffAbsolute) + ' sobre la oferta'
     : formatCurrency(Math.abs(result.diffAbsolute)) + ' bajo la oferta';
 
-  dynResult.innerHTML = `
-    <div class="dyn-result-card dyn-result-card--${color}">
-      <div class="dyn-result-header">
-        <span class="dyn-result-title">Residual al ${pct.toFixed(1)}%</span>
-        <span class="residual-status residual-status--${color}">${statusLabel}</span>
-      </div>
-      <span class="dyn-result-value">${formatCurrency(result.valor)}</span>
-      <div class="dyn-result-diff">
-        <span class="residual-badge residual-badge--${color}">${arrow} ${formatPct(result.diffPct)}</span>
-        <span>${diffLabel}</span>
-      </div>
-    </div>
-  `;
+  // Update explorer card
+  explorerValue.textContent = formatCurrency(result.valor);
+  explorerBadge.textContent = `${arrow} ${formatPct(result.diffPct)}`;
+  explorerBadge.className = `explorer-badge explorer-badge--${color}`;
+  explorerDiff.textContent = diffLabel;
+  explorerStatus.textContent = statusLabel;
+  explorerStatus.className = `residual-status residual-status--${color}`;
+
+  // Update section border color
+  explorerSection.className = `residual-explorer residual-explorer--${color}`;
+
+  // Update slider track color via CSS custom property
+  const sliderMin = 10, sliderMax = 45;
+  const sliderPctFill = ((pct - sliderMin) / (sliderMax - sliderMin)) * 100;
+  const colorVar = `var(--color-${color})`;
+  dynResidualSlider.style.setProperty('--slider-fill', sliderPctFill + '%');
+  dynResidualSlider.style.setProperty('--slider-color', colorVar);
+}
+
+function updateExplorerMarker() {
+  if (!lastCalcParams || !lastCalcParams.offerResidualPct) return;
+  const offerPct = lastCalcParams.offerResidualPct;
+  const sliderMin = 10, sliderMax = 45;
+  // Position marker relative to slider range (10-45)
+  const markerPos = ((offerPct - sliderMin) / (sliderMax - sliderMin)) * 100;
+  const clampedPos = Math.min(100, Math.max(0, markerPos));
+  explorerMarker.style.left = clampedPos + '%';
+
+  // If offer is outside range, flag it
+  if (offerPct < sliderMin || offerPct > sliderMax) {
+    explorerMarker.classList.add('explorer-marker--outside');
+  } else {
+    explorerMarker.classList.remove('explorer-marker--outside');
+  }
+  explorerMarkerLabel.textContent = `Oferta (${offerPct.toFixed(1)}%)`;
 }
 
 dynResidualSlider.addEventListener('input', updateDynamicResidual);
@@ -616,6 +669,8 @@ btnReset.addEventListener('click', function() {
   clearColonia();
   sliderSection.classList.add('hidden');
   precioM2Input.readOnly = false;
+  precioM2Input.parentElement.classList.remove('input-wrapper--manual');
+  precioEditBtn.classList.add('hidden');
   lastCalcParams = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });

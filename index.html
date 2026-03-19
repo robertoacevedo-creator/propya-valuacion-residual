@@ -54,7 +54,7 @@
       <div class="input-group">
         <label for="coloniaInput">Colonia</label>
         <div class="search-wrapper">
-          <div class="input-wrapper">
+          <div class="input-wrapper" id="coloniaSearchWrapper">
             <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" id="coloniaInput" placeholder="Buscar colonia..." autocomplete="off">
           </div>
@@ -66,11 +66,21 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
         </div>
+        <button type="button" class="colonia-manual-toggle" id="coloniaManualToggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span>Ingresar precio/m² manualmente</span>
+        </button>
       </div>
 
       <!-- Price with slider -->
       <div class="input-group">
-        <label for="precioM2">Precio por m² de inmuebles nuevos</label>
+        <div class="precio-label-row">
+          <label for="precioM2">Precio por m² de inmuebles nuevos</label>
+          <button type="button" class="precio-edit-btn hidden" id="precioEditBtn" aria-label="Editar precio manualmente">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Editar</span>
+          </button>
+        </div>
         <div class="input-wrapper">
           <span class="input-prefix">$</span>
           <input type="text" id="precioM2" inputmode="decimal" placeholder="45,000" required>
@@ -172,25 +182,33 @@
       </div>
     </div>
 
-    <!-- Residual Cards -->
-    <div class="residual-grid" id="residualGrid"></div>
-
-    <!-- Dynamic Residual Slider -->
-    <div class="dynamic-residual-section" id="dynamicResidualSection">
-      <h3>Explorador de Escenarios</h3>
-      <p class="dynamic-residual-desc">Ajusta el porcentaje residual para explorar márgenes de negociación</p>
-      <div class="slider-section">
+    <!-- Residual Slider (primary result) -->
+    <div class="residual-explorer" id="residualExplorer">
+      <div class="explorer-header">
+        <h3>Valor Residual del Terreno</h3>
+        <span class="residual-status" id="explorerStatus">Viable</span>
+      </div>
+      <div class="explorer-value-row">
+        <span class="explorer-value" id="explorerValue">$0</span>
+        <span class="explorer-badge" id="explorerBadge">+0%</span>
+      </div>
+      <p class="explorer-diff" id="explorerDiff"></p>
+      <div class="explorer-slider-section">
         <div class="slider-header">
           <span class="slider-label">Porcentaje residual</span>
           <span class="slider-value" id="dynResidualValue">16%</span>
         </div>
-        <input type="range" id="dynResidualSlider" class="slider" min="16" max="25" step="0.5" value="16">
+        <div class="explorer-slider-wrap" id="explorerSliderWrap">
+          <input type="range" id="dynResidualSlider" class="slider slider--dynamic" min="10" max="45" step="0.5" value="16">
+          <div class="explorer-marker" id="explorerMarker">
+            <span class="explorer-marker-label" id="explorerMarkerLabel">Oferta</span>
+          </div>
+        </div>
         <div class="slider-range">
-          <span>16%</span>
-          <span>25%</span>
+          <span>10%</span>
+          <span>45%</span>
         </div>
       </div>
-      <div class="dynamic-result" id="dynResult"></div>
     </div>
 
     <!-- Inverse Calculation -->
