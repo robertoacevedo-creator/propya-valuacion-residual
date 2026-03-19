@@ -360,15 +360,19 @@ function calculateDynamic(pctResidual) {
   return { valor, diffAbsolute, diffPct, pctResidual };
 }
 
-function getSignalColor(diffPct) {
-  if (diffPct >= 10) return 'green';
-  if (diffPct >= -10) return 'yellow';
+// Signal based on residual % ranges:
+// 16–19% → green/Viable | 20–22% → yellow/Ajustado | 23–24% → orange/Requiere ajuste | 25%+ → red/Inviable
+function getSignalColor(residualPct) {
+  if (residualPct <= 19) return 'green';
+  if (residualPct <= 22) return 'yellow';
+  if (residualPct <= 24) return 'orange';
   return 'red';
 }
 
-function getSignalLabel(diffPct) {
-  if (diffPct >= 10) return 'Viable';
-  if (diffPct >= -10) return 'Ajustado';
+function getSignalLabel(residualPct) {
+  if (residualPct <= 19) return 'Viable';
+  if (residualPct <= 22) return 'Ajustado';
+  if (residualPct <= 24) return 'Requiere ajuste';
   return 'Inviable';
 }
 
@@ -412,8 +416,8 @@ function render(data, precioM2, superficie, niveles, precioOferta, areaLibre) {
   comparisonBarContainer.appendChild(offerRow);
 
   data.residuals.forEach(r => {
-    const color = getSignalColor(r.diffPct);
-    const row = createCompRow(r.label, r.valor, precioOferta, maxVal, color);
+    const color = getSignalColor(r.pct);
+    const row = createCompRow(r.label, r.valor, precioOferta, maxVal, color, r.pct);
     comparisonBarContainer.appendChild(row);
   });
 
@@ -430,8 +434,9 @@ function renderInverse(inverseData, actualNiveles) {
     const nMin = r.nivelesMin;
     const nMinCeil = Math.ceil(nMin * 10) / 10; // round up to 1 decimal
     const isFeasible = actualNiveles >= nMinCeil;
-    const color = isFeasible ? 'green' : (nMinCeil <= actualNiveles * 1.3 ? 'yellow' : 'red');
-    const statusLabel = isFeasible ? 'Viable' : (nMinCeil <= actualNiveles * 1.3 ? 'Ajustado' : 'Inviable');
+    // Use the residual % signal for the card color and label
+    const color = getSignalColor(r.pct);
+    const statusLabel = getSignalLabel(r.pct);
 
     const card = document.createElement('div');
     card.className = `inverse-card inverse-card--${color}`;
@@ -462,8 +467,8 @@ function updateDynamicResidual() {
   const result = calculateDynamic(pct);
   if (!result) return;
 
-  const color = getSignalColor(result.diffPct);
-  const statusLabel = getSignalLabel(result.diffPct);
+  const color = getSignalColor(pct);
+  const statusLabel = getSignalLabel(pct);
   const arrow = result.diffAbsolute >= 0 ? '↑' : '↓';
   const diffLabel = result.diffAbsolute >= 0
     ? formatCurrency(result.diffAbsolute) + ' sobre la oferta'
@@ -508,7 +513,7 @@ function updateExplorerMarker() {
 
 dynResidualSlider.addEventListener('input', updateDynamicResidual);
 
-function createCompRow(label, value, offerValue, maxVal, color) {
+function createCompRow(label, value, offerValue, maxVal, color, residualPct) {
   const row = document.createElement('div');
   row.className = 'comp-row';
   const fillPct = Math.min((value / maxVal) * 100, 100);
@@ -529,7 +534,7 @@ function createCompRow(label, value, offerValue, maxVal, color) {
 
   const diff = value - offerValue;
   const diffPctVal = ((diff) / offerValue) * 100;
-  const statusLabel = getSignalLabel(diffPctVal);
+  const statusLabel = getSignalLabel(residualPct);
 
   row.innerHTML = `
     <div class="comp-row-header">
@@ -565,8 +570,8 @@ function saveToHistory(precioM2, superficie, niveles, areaLibre, precioOferta, d
   // Determine best/worst scenario
   const scenarios = data.residuals.map(r => ({
     label: r.pct + '%',
-    color: getSignalColor(r.diffPct),
-    statusLabel: getSignalLabel(r.diffPct)
+    color: getSignalColor(r.pct),
+    statusLabel: getSignalLabel(r.pct)
   }));
 
   const entry = {
